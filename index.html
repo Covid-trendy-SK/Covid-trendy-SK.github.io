@@ -9,19 +9,6 @@
   <script src="libraries/vue.min.js"></script>
   <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
   <link rel="icon" href="favicon.ico" type="image/x-icon">
-  <!-- Twitter Card data -->
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Covid Trends">
-  <meta name="twitter:description" content="Visualizing the exponential growth of COVID-19 across the world.">
-  <meta name="twitter:site" content="@aatishb">
-  <!-- Twitter Summary card images must be at least 120x120px -->
-  <meta name="twitter:image" content="https://aatishb.com/covidtrends/logos/covid-trends-logo-nowords.png">
-  <!-- Open Graph data -->
-  <meta property="og:title" content="Covid Trends" />
-  <meta property="og:type" content="article" />
-  <meta property="og:url" content="https://aatishb.com/covidtrends/" />
-  <meta property="og:image" content="https://aatishb.com/covidtrends/logos/covid-trends-logo-nowords.png" />
-  <meta property="og:description" content="Visualizing the exponential growth of COVID-19 across the world." />
 </head>
 <body>
 
@@ -48,14 +35,7 @@
         </div>
 
         <div class="logowrapper">
-
           <h1><a href="https://aatishb.com/covidtrends">Covid Trends</a></h1>
-
-          <div v-if="!isHidden" class="logos">
-            <a href="https://aatishb.com/" aria-label="Visit the website of Aatish Bhatia"><img src="logos/aatishb-bw.png" height="40" alt="Avatar of Aatish Bhatia"></a>
-            <a href="https://www.youtube.com/user/minutephysics" aria-label="Visit the Youtube channel of Minute Physics"><img src="logos/minutephysics-invert.png" height="40" alt="Minute Physics Logo"></a>
-          </div>
-
         </div>
 
     </header>
@@ -91,11 +71,12 @@
 
         </div>
 
-        <div v-if="!firstLoad && covidData.length == 0" class="nodata"><span>Not enough data for these parameters.</span></div>
-        <div v-if="!firstLoad && covidData.length != 0 && !countries.some(country => selectedCountries.includes(country))" class="nodata"><span>Please select some {{regionType.toLowerCase()}} to display.</span></div>
+        <div v-if="!firstLoad && covidData.length == 0" class="nodata"><span>Málo údajov pre zobrazenie podľa zvolených parametrov.</span></div>
+        <div v-if="!firstLoad && covidData.length != 0 && !countries.some(country => selectedCountries.includes(country))" class="nodata"><span>Please select some districts to display.</span></div>
         
         <footer>
-          Created by <a href="https://aatishb.com/">Aatish Bhatia</a> in collaboration with <a href="https://www.youtube.com/user/minutephysics">Minute Physics</a> &middot; World data provided by <a href="https://github.com/CSSEGISandData/COVID-19">Johns Hopkins University</a> (updated daily around 00:00 UTC / 20:00 ET) &middot; US state data provided by <a href="https://github.com/nytimes/covid-19-data">NYTimes</a> (updated daily around 16:00 UTC / 12:00 ET)&middot; Shortcuts: +/- for daily changes, space to play/pause &middot; <a href="https://github.com/aatishb/covidtrends#credits">Credits & Source</a> &middot; <a href="https://www.cdc.gov/coronavirus/2019-ncov/prepare/prevention.html">Stay safe!</a>
+          Z pôvodného <a href="https://aatishb.com/covidtrends/">Covid Trends</a>, ktorého autor je <a href="https://aatishb.com/">Aatish Bhatia</a> vytvoril Ľubor Illek. Údaje o nakazených podľa <a href="https://mapa.covid.chat/history">mapa.covid.chat</a> 
+          (aktualizované denne, obvykle doobeda) &middot; Ovládanie: +/- krok o deň, medzera pusti/stop &middot; <a href="https://github.com/aatishb/covidtrends#credits">Zdroj</a> &middot; <a href="https://korona.gov.sk/">Zostaňte zdraví!</a>
         </footer>
 
       </main>
@@ -103,43 +84,37 @@
       <aside>
 
         <div>
-          <h2>Customize</h2>
-          <label for="selectedData">Select Parameter</label>
+          <h2>Nastavenia</h2>
+          <label for="selectedData">Zobrazený parameter</label>
           <select id="selectedData" v-model="selectedData" @mousedown="pause">
             <option v-for="d in dataTypes" v-bind:value="d">
               {{ d }}
             </option>
           </select>
-          <label for="selectedRegion">Select Region</label>
-          <select id="selectedRegion" v-model="selectedRegion" @mousedown="pause">
-            <option v-for="s in regions" v-bind:value="s">
-              {{ s }}
-            </option>
-          </select>
-          <label for="selectedScale">Select Scale</label>
+          <label for="selectedScale">Typ škály</label>
           <select @change="createURL" id="selectedScale" v-model="selectedScale" @mousedown="pause">
             <option v-for="s in scale" v-bind:value="s">
               {{ s }}
             </option>
           </select>
           <input type="checkbox" style="margin-top: 0.75rem;" id="showLabels" v-model="showLabels">
-          <label for="showLabels">Show Labels</label>
+          <label for="showLabels">Zobraziť názvy</label>
 
           <div>
             <input @change="createURL" type="checkbox" style="margin-top: 0.75rem;" id="showTrendLine" v-model="showTrendLine">
-            <label for="showTrendLine">Show
+            <label for="showTrendLine">Zobraz líniu
               <input @change="createURL" type="number" min="1" step="1" style="width: 3rem; padding: 0rem; font-size: inherit;" v-model.number="doublingTime" @focus="pause"  aria-label="Doubling Time in Days">
-               Day Doubling Time</label>
+               -denného zdvojnáseobenia prípadov</label>
           </div>
 
           <input @change="createURL" type="checkbox" style="margin-top: 0.75rem;" id="perMillion" v-model="perMillion">
-          <label for="perMillion">Show amout relative to population</label>
+          <label for="perMillion">Relatívne k počtu obyvateľov</label>
 
         </div>
 
         <div class="countries">
 
-          <h2>{{regionType}}</h2>
+          <h2>Okresy</h2>
 
           <div class="search">
             <input id="searchField" v-model="searchField" placeholder="Search For A Location" aria-label="Search For A Location">
@@ -150,7 +125,7 @@
             <button @click="selectAll" aria-Label="Select All Regions">Select All</button>
           </div>
 
-          <p style="padding-top: 1rem;">Showing {{regionType}} with at least {{minCasesInCountry}} {{selectedData}}</p>
+          <p style="padding-top: 1rem;">Showing {{selectedData}}</p>
 
           <ul>
             <li v-for="country in visibleCountries">
@@ -168,7 +143,7 @@
   </div>
 
   <!-- page code -->
-  <script src="population2020.js"></script>
+  <script src="okresy.js"></script>
   <script src="vue-definitions.js?7"></script>
 
 </body>
