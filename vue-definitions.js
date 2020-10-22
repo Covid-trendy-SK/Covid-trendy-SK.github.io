@@ -161,7 +161,7 @@ window.app = new Vue({
   el: '#root',
 
   mounted() {
-    this.pullData(this.selectedData, this.selectedRegion);
+    this.pullData(this.selectedData);
   },
 
   created: function() {
@@ -186,31 +186,15 @@ window.app = new Vue({
       if (urlParameters.has('data')) {
         let myData = urlParameters.get('data').toLowerCase();
         if (myData == 'cases') {
-          this.selectedData = 'Confirmed Cases';
+          this.selectedData = 'potvrdených prípadov';
         } else if (myData == 'deaths') {
           this.selectedData = 'Reported Deaths';
         }
 
       }
 
-      if (urlParameters.has('region')) {
-        let myRegion = urlParameters.get('region');
-        if (this.regions.includes(myRegion)) {
-          this.selectedRegion = myRegion;
-        }
-      }
-
-      // since this rename came later, use the old name to not break existing URLs
-      let renames = {
-        'China': 'China (Mainland)'
-      };
-
-      // before we added regions, the url parameter was called country instead of location
-      // we still check for this so as to not break existing URLs
-      if (urlParameters.has('country')) {
-        this.selectedCountries = urlParameters.getAll('country').map(e => Object.keys(renames).includes(e) ? renames[e] : e);
-      } else if (urlParameters.has('location')) {
-        this.selectedCountries = urlParameters.getAll('location').map(e => Object.keys(renames).includes(e) ? renames[e] : e);
+      if (urlParameters.has('location')) {
+        this.selectedCountries = urlParameters.getAll('location');
       }
 
       if (urlParameters.has('trendline')) {
@@ -224,7 +208,7 @@ window.app = new Vue({
       if (urlParameters.has('perMillion')) {
         let perMillion = urlParameters.get('perMillion');
         this.perMillion = (perMillion == 'true');
-      }
+      } else this.perMillion = false;
       this.minCasesInCountry = (this.perMillion ? 0.00050 : 50);
 
       if (urlParameters.has('select')) {
@@ -256,21 +240,14 @@ window.app = new Vue({
   watch: {
     selectedData() {
       if (!this.firstLoad) {
-        this.pullData(this.selectedData, this.selectedRegion, /*updateSelectedCountries*/ false);
-      }
-      this.searchField = '';
-    },
-
-    selectedRegion() {
-      if (!this.firstLoad) {
-        this.pullData(this.selectedData, this.selectedRegion, /*updateSelectedCountries*/ true);
+        this.pullData(this.selectedData, /*updateSelectedCountries*/ false);
       }
       this.searchField = '';
     },
 
     perMillion() {
       if (!this.firstLoad) {
-        this.pullData(this.selectedData, this.selectedRegion, /*updateSelectedCountries*/ false);
+        this.pullData(this.selectedData, /*updateSelectedCountries*/ false);
       }
       this.searchField = '';
     },
@@ -333,178 +310,63 @@ window.app = new Vue({
       return Math.min.apply(Math, par);
     },
 
-    pullData(selectedData, selectedRegion, updateSelectedCountries = true) {
+    pullData(selectedData, updateSelectedCountries = true) {
 
-      if (selectedRegion != 'US') {
-        let url;
-        if (selectedData == 'Confirmed Cases') {
-          url = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv';
-        } else if (selectedData == 'Reported Deaths') {
-          url = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv';
-        } else {
-          return;
-        }
-        Plotly.d3.csv(url, (data) => this.processData(data, selectedRegion, updateSelectedCountries));
-      } else { // selectedRegion == 'US'
-        const type = (selectedData == 'Reported Deaths') ? 'deaths' : 'cases';
-        const url = 'https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv';
-        Plotly.d3.csv(url, (data) => this.processData(this.preprocessNYTData(data, type), selectedRegion, updateSelectedCountries));
-      }
-    },
+      const Httpreq = new XMLHttpRequest(); // a new request
+      Httpreq.open("GET", "https://mapa.covid.chat/map_data/daily", false);
+      Httpreq.send(null);         
+      const rawData = JSON.parse(Httpreq.responseText).days;
+      
+      const dates = [];
 
-    removeRepeats(array) {
-      return [...new Set(array)];
-    },
-
-    groupByCountry(data, dates, regionsToPullToCountryLevel /* pulls out Hong Kong & Macau from region to country level */) {
-
-      let countries = data.map(e => e['Country/Region']);
-      countries = this.removeRepeats(countries);
-
-      let grouped = [];
-      for (let country of countries) {
-
-        // filter data for this country (& exclude regions we're pulling to country level)
-        // e.g. Mainland China numbers should not include Hong Kong & Macau, to avoid double counting
-        let countryData = data.filter(e => e['Country/Region'] == country)
-          .filter(e => !regionsToPullToCountryLevel.includes(e['Province/State']));
-
-        const row = {region: country};
-
-        for (let date of dates) {
-          let sum = countryData.map(e => parseInt(e[date]) || 0).reduce((a, b) => a + b);
-          row[date] = sum;
-        }
-
-        grouped.push(row);
-
+      const poOkresoch = [];
+      for (let istr in okresy) {
+        const i = parseInt(istr, 10);
+        poOkresoch[i] = {
+          country: okresy[istr].title,
+          cases: [],
+          maxCases: 0,
+          population: okresy[istr].population
+        };
       }
 
-      return grouped;
-    },
+      for (let dayiter = 0; dayiter < rawData.length; dayiter++) {
+        const dd = rawData[dayiter];
+        dates.push(dd.day.replace(/-/g, '.'));
 
-    filterByCountry(data, dates, selectedRegion) {
-      return data.filter(e => e['Country/Region'] == selectedRegion)
-        .map(e => Object.assign({}, e, {region: e['Province/State']}));
-    },
+        for (let okriter = 0; okriter < dd.list.length; okriter++) {
+          const i = parseInt(dd.list[okriter].id, 10);
+          if (!poOkresoch[i]) continue;
+          const cases = parseInt(dd.list[okriter].infected) / (this.perMillion ? poOkresoch[i].population / 10000 : 1);
+          poOkresoch[i].cases.push(cases >= this.minCasesInCountry ? cases : NaN);
+          if (poOkresoch[i].maxCases < cases) poOkresoch[i].maxCases = cases;
+        }
+      }
 
-    convertStateToCountry(data, dates, selectedRegion) {
-      return data.filter(e => e['Province/State'] == selectedRegion)
-        .map(e => Object.assign({}, e, {region: e['Province/State']}));
-    },
+      //odstran posledny den ak vsetko rovnake ako den predtym - zrejme este nie su udaje
+      if (poOkresoch.every(o => Object.is(o.cases[o.cases.length - 1], o.cases[o.cases.length - 2]))) { //nie je pouzite === kvoli NaN
+        dates.pop();
+        poOkresoch.forEach(o => o.cases.pop());
+      }
 
-    addSyntheticRegion(grouped, regionName, countries) {
-      const includedRegions = grouped.filter(e => countries.includes(e.region));
-      if (includedRegions.length == 0) return;
-
-      const newRegion = includedRegions.reduce((acc, cur) => {
-        for (const atr in cur) acc[atr] = (acc[atr] ? acc[atr] + cur[atr] : cur[atr]);
-        return acc;
-      }, {});
-      newRegion.region = regionName;
-
-      grouped.push(newRegion);
-    },
-
-    processData(data, selectedRegion, updateSelectedCountries) {
-      let dates = Object.keys(data[0]).slice(4);
       this.dates = dates;
       this.day = this.dates.length;
 
-      let regionsToPullToCountryLevel = ['Hong Kong', 'Macau'];
+      poOkresoch.forEach(okres => {
+        okres.slope = okres.cases.map((e, i, a) => e - a[i - this.lookbackTime]);
+      });
 
-      let grouped;
-
-      if (selectedRegion == 'World') {
-        grouped = this.groupByCountry(data, dates, regionsToPullToCountryLevel);
-
-        // pull Hong Kong and Macau to Country level
-        for (let region of regionsToPullToCountryLevel) {
-          let country = this.convertStateToCountry(data, dates, region);
-          if (country.length === 1) {
-            grouped = grouped.concat(country);
-          }
-        }
-
-        if (this.perMillion) {
-          grouped.forEach(country => {
-            country.population = population2020.reduce((popacc, nextCountry) =>
-              popacc + (nextCountry[0] == country.region || nextCountry[2] == country.region ? nextCountry[3] / 1000 : 0),
-            0);
-            if (country.population == 0) console.log('No population data for ' + country.region);
-          });
-
-          grouped = grouped.filter(c => c.population);
-        }
-
-        // additional regions computed from present country data
-        this.addSyntheticRegion(grouped, 'EU', [
-          'Austria', 'Belgium', 'Bulgaria', 'Croatia', 'Cyprus',
-          'Czechia', 'Denmark', 'Estonia', 'Finland', 'France',
-          'Germany', 'Greece', 'Hungary', 'Ireland', 'Italy',
-          'Latvia', 'Lithuania', 'Luxembourg', 'Malta', 'Netherlands',
-          'Poland', 'Portugal', 'Romania', 'Slovakia', 'Slovenia',
-          'Spain', 'Sweden'
-        ]);
-        this.addSyntheticRegion(grouped, 'EU+UK+EFTA+Microstates', [
-          'EU', 'United Kingdom',
-          'Iceland', 'Liechtenstein', 'Norway', 'Switzerland',
-          'Andorra', 'Monaco', 'San Marino', 'Holy See'
-        ]);
-      
-      } else {
-        grouped = this.filterByCountry(data, dates, selectedRegion)
-          .filter(e => !regionsToPullToCountryLevel.includes(e.region)); // also filter our Hong Kong and Macau as subregions of Mainland China
-      }
-
-      let exclusions = ['Cruise Ship', 'Diamond Princess'];
-
-      let renames = {
-        'Taiwan*': 'Taiwan',
-        'Korea, South': 'South Korea',
-        'China': 'China (Mainland)'
-      };
-
-      let covidData = [];
-      for (let row of grouped) {
-
-        if (!exclusions.includes(row.region)) {
-          const arr = [];
-          for (let date of dates) {
-            arr.push(row[date]);
-          }
-          let slope = arr.map((e, i, a) => e - a[i - this.lookbackTime]);
-          let region = row.region;
-
-          if (Object.keys(renames).includes(region)) {
-            region = renames[region];
-          }
-
-          const cases = arr.map(e => e >= this.minCasesInCountry ? e / (this.perMillion ? row.population : 1) : NaN);
-          covidData.push({
-            country: region,
-            cases,
-            slope: slope.map((e, i) => arr[i] >= this.minCasesInCountry ? e / (this.perMillion ? row.population : 1) : NaN),
-            maxCases: this.myMax(...cases)
-          });
-
-        }
-      }
-
-      this.covidData = covidData.filter(e => e.maxCases > this.minCasesInCountry);
+      this.covidData = poOkresoch.filter(e => e.maxCases > this.minCasesInCountry);
       this.countries = this.covidData.map(e => e.country).sort();
       this.visibleCountries = this.countries;
       const topCountries = this.covidData.sort((a, b) => b.maxCases - a.maxCases).slice(0, 9).map(e => e.country);
-      const notableCountries = ['China (Mainland)', 'India', 'US', // Top 3 by population
-        'South Korea', 'Japan', 'Taiwan', 'Singapore', // Observed success so far
-        'Hong Kong',            // Was previously included in China's numbers
-        'Canada', 'Australia']; // These appear in the region selector
+
 
       // TODO: clean this logic up later
       // expected behavior: generate/overwrite selected locations if: 1. data loaded from URL, but no selected locations are loaded. 2. data refreshed (e.g. changing region)
       // but do not overwrite selected locations if 1. selected locations loaded from URL. 2. We switch between confirmed cases <-> deaths
       if ((this.selectedCountries.length === 0 || !this.firstLoad) && updateSelectedCountries) {
-        this.selectedCountries = this.countries.filter(e => topCountries.includes(e) || notableCountries.includes(e));
+        this.selectedCountries = this.countries.filter(e => topCountries.includes(e));
         
         this.defaultCountries = this.selectedCountries; // Used for createURL default check
         
@@ -521,38 +383,9 @@ window.app = new Vue({
       this.createURL();
     },
 
-    preprocessNYTData(data, type) {
-      let recastData = {};
-      data.forEach(e => {
-        let st = recastData[e.state] = (recastData[e.state] || {'Province/State': e.state, 'Country/Region': 'US', 'Lat': null, 'Long': null});
-        st[fixNYTDate(e.date)] = parseInt(e[type]);
-      });
-      return Object.values(recastData);
-
-      function fixNYTDate(date) {
-        let tmp = date.split('-');
-        return `${tmp[1]}/${tmp[2]}/${tmp[0].substr(2)}`;
-      }
-    },
-
     formatDate(date) {
-      if (!date) {
-        return '';
-      }
-
-      let [m, d, y] = date.split('/');
-      return new Date(Date.UTC(2000 + (+y), m - 1, d)).toISOString().slice(0, 10);
-    },
-
-    dateToText(date) {
-      if (!date) {
-        return '';
-      }
-
-      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-      let [m, d] = date.split('/');
-      return monthNames[m - 1] + ' ' + d;
+      if (!date) return '';
+      else return date;
     },
 
     // TODO: clean up play/pause logic
@@ -623,10 +456,6 @@ window.app = new Vue({
         queryUrl.append('data', 'deaths');
       }
 
-      if (this.selectedRegion != 'World') {
-        queryUrl.append('region', this.selectedRegion);
-      }
-
       // since this rename came later, use the old name for URLs to avoid breaking existing URLs
       let renames = {'China (Mainland)': 'China'};
             
@@ -639,7 +468,7 @@ window.app = new Vue({
       }
 
       if (this.perMillion) {
-        queryUrl.append('perMillion', this.showTrendLine);
+        queryUrl.append('perMillion', this.perMillion);
       }
 
       // check if no countries selected
@@ -698,22 +527,6 @@ window.app = new Vue({
       }
     },
 
-    regionType() {
-      switch (this.selectedRegion) {
-        case 'World':
-          return 'Countries';
-        case 'Australia':
-        case 'US':
-          return 'States / Territories';
-        case 'China':
-          return 'Provinces';
-        case 'Canada':
-          return 'Provinces';
-        default:
-          return 'Regions';
-      }
-    },
-
     annotations() {
 
       return [{
@@ -724,7 +537,7 @@ window.app = new Vue({
         yref: 'y',
         xshift: -50 * Math.cos(this.graphAttributes.referenceLineAngle),
         yshift: 50 * Math.sin(this.graphAttributes.referenceLineAngle),
-        text: this.doublingTime + ' Day Doubling Time<br>of ' + this.selectedData,
+        text: this.doublingTime + '- denné zdvojnáseobenie<br>' + this.selectedData,
         align: 'right',
         showarrow: false,
         textangle: this.graphAttributes.referenceLineAngle * 180 / Math.PI,
@@ -739,11 +552,11 @@ window.app = new Vue({
 
     layout() {
       return {
-        title: 'Trajectory of ' + this.selectedRegion + ' COVID-19 ' + this.selectedData + ' (' + this.formatDate(this.dates[this.day - 1]) + ')',
+        title: 'Priebeh COVID-19 ' + this.selectedData + ' (' + this.formatDate(this.dates[this.day - 1]) + ')',
         showlegend: false,
         autorange: false,
         xaxis: {
-          title: 'Total ' + this.selectedData + (this.perMillion ? ' per Million Population' : ''),
+          title: 'Spolu ' + this.selectedData + (this.perMillion ? ' na 10000 obyvateľov' : ''),
           type: this.selectedScale == 'Logarithmic Scale' ? 'log' : 'linear',
           range: this.selectedScale == 'Logarithmic Scale' ? this.logxrange : this.linearxrange,
           titlefont: {
@@ -752,7 +565,7 @@ window.app = new Vue({
           },
         },
         yaxis: {
-          title: 'New ' + this.selectedData + ' (in the Past Week)' + (this.perMillion ? ' per Million Population' : ''),
+          title: 'Nových ' + this.selectedData + ' (za posledný týždeň)' + (this.perMillion ? ' na 10000 obyvateľov' : ''),
           type: this.selectedScale == 'Logarithmic Scale' ? 'log' : 'linear',
           range: this.selectedScale == 'Logarithmic Scale' ? this.logyrange : this.linearyrange,
           titlefont: {
@@ -779,7 +592,7 @@ window.app = new Vue({
         x: e.cases.slice(0, this.day),
         y: e.slope.slice(0, this.day),
         name: e.country,
-        text: this.dates.map(date => e.country + '<br>' + this.formatDate(date)),
+        text: this.dates.map(date => e.country + '<br>' + date),
         mode: showDailyMarkers ? 'lines+markers' : 'lines',
         type: 'scatter',
         legendgroup: i,
@@ -791,7 +604,7 @@ window.app = new Vue({
           color: 'rgba(0,0,0,0.15)'
         },
         hoverinfo: 'x+y+text',
-        hovertemplate: '%{text}<br>Total ' + this.selectedData + ': %{x:,}<br>Weekly ' + this.selectedData + ': %{y:,}<extra></extra>',
+        hovertemplate: '%{text}<br>Spolu ' + this.selectedData + ': %{x:,}<br>Za posledný týždeň: %{y:,}<extra></extra>',
       })
       );
 
@@ -808,7 +621,7 @@ window.app = new Vue({
           size: 6,
           color: 'rgba(254, 52, 110, 1)'
         },
-        hovertemplate: '%{data.text}<br>Total ' + this.selectedData + ': %{x:,}<br>Weekly ' + this.selectedData + ': %{y:,}<extra></extra>',
+        hovertemplate: '%{data.text}<br>Spolu ' + this.selectedData + ': %{x:,}<br>Za posledný týždeň: %{y:,}<extra></extra>',
 
       }));
 
@@ -854,7 +667,6 @@ window.app = new Vue({
       return {
         uistate: { // graph is updated when uistate changes
           selectedData: this.selectedData,
-          selectedRegion: this.selectedRegion,
           selectedScale: this.selectedScale,
           showLabels: this.showLabels,
           showTrendLine: this.showTrendLine,
@@ -958,13 +770,9 @@ window.app = new Vue({
 
     paused: true,
 
-    dataTypes: ['Confirmed Cases', 'Reported Deaths'],
+    dataTypes: ['potvrdených prípadov', 'Reported Deaths'],
 
-    selectedData: 'Confirmed Cases',
-
-    regions: ['World', 'US', 'China', 'Australia', 'Canada'],
-
-    selectedRegion: 'World',
+    selectedData: 'potvrdených prípadov',
 
     sliderSelected: false,
 
