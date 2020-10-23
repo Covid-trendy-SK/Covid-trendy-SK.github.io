@@ -17,25 +17,31 @@
     <header>
 
         <div class="explainer">
-          <p>This interactive charts the <b><i>new</i></b> {{selectedData.toLowerCase()}} of COVID-19 in the past week vs. the <b><i>total</i></b> {{selectedData.toLowerCase()}} to date. When plotted in this way, exponential growth is represented as a straight line that slopes upwards. Notice that almost all countries follow a very similar path of exponential growth. <i>We're all in this together.</i> <span v-if="isHidden"><a @click="toggleHide">Learn more.</a></span></p>
+          <p>Tento interaktívny graf zobrazuje počet <b><i>nových</i></b> {{selectedData.toLowerCase()}} nakazených na COVID-19 za posledný týžden vs. počet <b><i>všetkých</i></b> {{selectedData.toLowerCase()}} do určitého dátumu. Pri takomto zobrazení exponenciálny rast s určitým koeficientom vyzerá ako priama, stúpajúca línia. Dnes sa väčšina okresov Slovenska pohybuje zhruba po takejto dráhe. Sme v tom všetci spoločne, <i>zachráňme sito.</i> <span v-if="isHidden"><a @click="toggleHide">Zisti viac.</a></span></p>
 
           <span v-if="!isHidden">
 
-            <p>To learn more about this graph, watch this video created by Minute Physics.</p>
-            <br>
-
+            <p>Tu je pekné video kde je detailnejšie vysvetlené zobrazenie na taktomto type grafu:</p><br>
             <iframe width="560" height="315" src="https://www.youtube.com/embed/54XLXg4fYsc" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
-            <p><i><b>Note:</b> The x-axis of this graph is not time</i>, but is instead the total number of cases or deaths.</p>
+            <p><b>Ovládanie:</b><br>
+              - Škály sú zobrazované logaritmicky, to síce dáva plošne lepší prehľad, ale neskúsenému oku môže skreslovať výsledok, kto chce vidieť prečo sú dnes "4 problémové okresy", nech si pozrie lineárnu škálu.<br>
+              - Na x-ovej osi nie je čas ako obvykle, ale celkový počet nakazených, takto sa dá lepšie korelovať situácia medzi jednotlivými okresmi.<br>
+              - Prehľad stavu v určitom čase vidieť polohou koncových (červených) bodov pri nastavení dátumu na časovej škále v spodnej časti grafu.<br>
+              - Na zväčšenie označ myšou obdĺžnik, dvojklik je návrat na celé zobrazenie. Podrž myš nad čiarou pre detailnejšie údaje v príslušnom mieste. Stlač medzeru na zastavenie / spustenie plynutia času, klávesy +/- pre krok o deň vpred/vzad - alebo ťahaním ukazovateľa dátumu.<br>
+              - Aby bolo niečo zmysluplné vidieť, treba veľkú obrazovku.</p>
 
-            <p><b>Tips:</b> Press Space (or the play button) to Play/Pause. Press +/- keys (or drag the slider) to see daily changes. Hover over the graph for more info. Drag your mouse to zoom in, doubleclick to zoom back out. And don't forget to wash your hands!</p>
-
-            <a id="hide" @click="toggleHide">Hide</a>
+            <p><b>Poznámky:</b><br>
+              - Bratislava a Košice sú zobrazené každé ako jeden okres, nie sú k dispozícii podrobnejšie údaje.<br>
+              - Zobraziť sa dajú iba údaje o počte potvrdených nakazených, iné nie sú k dispozícii, viď. "priorita vlády OpenData".<br>
+              - "Ľavý dolný" segment obrázka, čiže zhruba hodnoty menšie ako [10,1] zobrazuje vskutku iba to hemženie, ktoré je pre tento obrázok dosť málo výpovedné, časom to odrežem.<br>
+              - Počty obyvateľov okresov sú staticky k 31.12.2019.<br>
+            <a id="hide" @click="toggleHide">Skryť</a>
           </span>
         </div>
 
         <div class="logowrapper">
-          <h1><a href="https://covid-trendy-sk.github.io/?doublingtime=12&select=all">Covid trendy SK</a></h1>
+          <h1><a href="https://covid-trendy-sk.github.io/?doublingtime=12&perMillion=true&select=all">Covid trendy SK</a></h1>
         </div>
 
     </header>
@@ -117,15 +123,13 @@
           <h2>Okresy</h2>
 
           <div class="search">
-            <input id="searchField" v-model="searchField" placeholder="Search For A Location" aria-label="Search For A Location">
+            <input id="searchField" v-model="searchField" placeholder="Vyhľadať okres" aria-label="Vyhľadať okres">
           </div>
 
           <div class="buttonwrapper">
-            <button @click="deselectAll" aria-Label="Deselect All Regions">Deselect All</button>
-            <button @click="selectAll" aria-Label="Select All Regions">Select All</button>
+            <button @click="deselectAll" aria-Label="Zruš výber">Zruš výber</button>
+            <button @click="selectAll" aria-Label="Vyber všetko">Vyber všetko</button>
           </div>
-
-          <p style="padding-top: 1rem;">Showing {{selectedData}}</p>
 
           <ul>
             <li v-for="country in visibleCountries">

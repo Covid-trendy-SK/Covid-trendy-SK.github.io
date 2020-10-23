@@ -1,4 +1,4 @@
-/* global population2020, console */
+/* global okresy */
 /* jshint esversion: 6 */
 // custom graph component
 Vue.component('graph', {
@@ -177,9 +177,9 @@ window.app = new Vue({
         let myScale = urlParameters.get('scale').toLowerCase();
 
         if (myScale == 'log') {
-          this.selectedScale = 'Logarithmic Scale';
+          this.selectedScale = 'logaritmická škála';
         } else if (myScale == 'linear') {
-          this.selectedScale = 'Linear Scale';
+          this.selectedScale = 'lineárna škála';
         }
       }
 
@@ -209,7 +209,6 @@ window.app = new Vue({
         let perMillion = urlParameters.get('perMillion');
         this.perMillion = (perMillion == 'true');
       } else this.perMillion = false;
-      this.minCasesInCountry = (this.perMillion ? 0.00050 : 50);
 
       if (urlParameters.has('select')) {
         this.mySelect = urlParameters.get('select').toLowerCase();
@@ -338,7 +337,7 @@ window.app = new Vue({
           const i = parseInt(dd.list[okriter].id, 10);
           if (!poOkresoch[i]) continue;
           const cases = parseInt(dd.list[okriter].infected) / (this.perMillion ? poOkresoch[i].population / 10000 : 1);
-          poOkresoch[i].cases.push(cases >= this.minCasesInCountry ? cases : NaN);
+          poOkresoch[i].cases.push(cases);
           if (poOkresoch[i].maxCases < cases) poOkresoch[i].maxCases = cases;
         }
       }
@@ -356,7 +355,7 @@ window.app = new Vue({
         okres.slope = okres.cases.map((e, i, a) => e - a[i - this.lookbackTime]);
       });
 
-      this.covidData = poOkresoch.filter(e => e.maxCases > this.minCasesInCountry);
+      this.covidData = poOkresoch;
       this.countries = this.covidData.map(e => e.country).sort();
       this.visibleCountries = this.countries;
       const topCountries = this.covidData.sort((a, b) => b.maxCases - a.maxCases).slice(0, 9).map(e => e.country);
@@ -397,7 +396,7 @@ window.app = new Vue({
         }
 
         this.paused = false;
-        setTimeout(this.increment, 200);
+        setTimeout(this.increment, 10);
 
       } else {
         this.paused = true;
@@ -448,7 +447,7 @@ window.app = new Vue({
       
       let queryUrl = new URLSearchParams();
 
-      if (this.selectedScale == 'Linear Scale') {
+      if (this.selectedScale == 'lineárna škála') {
         queryUrl.append('scale', 'linear');
       }
 
@@ -537,13 +536,13 @@ window.app = new Vue({
         yref: 'y',
         xshift: -50 * Math.cos(this.graphAttributes.referenceLineAngle),
         yshift: 50 * Math.sin(this.graphAttributes.referenceLineAngle),
-        text: this.doublingTime + '- denné zdvojnáseobenie<br>' + this.selectedData,
+        text: 'za ' + this.doublingTime + ' ' + (this.doublingTime < 5 ? this.doublingTime == 1 ? 'deň' : 'dni' : 'dní') + ' zdvojnásobenie<br>' + this.selectedData,
         align: 'right',
         showarrow: false,
         textangle: this.graphAttributes.referenceLineAngle * 180 / Math.PI,
         font: {
           family: 'Open Sans, sans-serif',
-          color: 'black',
+          color: 'grey',
           size: 14
         },
       }];
@@ -552,13 +551,13 @@ window.app = new Vue({
 
     layout() {
       return {
-        title: 'Priebeh COVID-19 ' + this.selectedData + ' (' + this.formatDate(this.dates[this.day - 1]) + ')',
+        title: 'Priebeh COVID-19 ' + this.selectedData + ' v okresoch Slovenska (do ' + this.formatDate(this.dates[this.day - 1]) + ')',
         showlegend: false,
         autorange: false,
         xaxis: {
           title: 'Spolu ' + this.selectedData + (this.perMillion ? ' na 10000 obyvateľov' : ''),
-          type: this.selectedScale == 'Logarithmic Scale' ? 'log' : 'linear',
-          range: this.selectedScale == 'Logarithmic Scale' ? this.logxrange : this.linearxrange,
+          type: this.selectedScale == 'logaritmická škála' ? 'log' : 'linear',
+          range: this.selectedScale == 'logaritmická škála' ? this.logxrange : this.linearxrange,
           titlefont: {
             size: 24,
             color: 'rgba(254, 52, 110,1)'
@@ -566,8 +565,8 @@ window.app = new Vue({
         },
         yaxis: {
           title: 'Nových ' + this.selectedData + ' (za posledný týždeň)' + (this.perMillion ? ' na 10000 obyvateľov' : ''),
-          type: this.selectedScale == 'Logarithmic Scale' ? 'log' : 'linear',
-          range: this.selectedScale == 'Logarithmic Scale' ? this.logyrange : this.linearyrange,
+          type: this.selectedScale == 'logaritmická škála' ? 'log' : 'linear',
+          range: this.selectedScale == 'logaritmická škála' ? this.logyrange : this.linearyrange,
           titlefont: {
             size: 24,
             color: 'rgba(254, 52, 110,1)'
@@ -626,7 +625,7 @@ window.app = new Vue({
       }));
 
       if (this.showTrendLine && this.doublingTime > 0) {
-        let cases = [1, 10000000];
+        let cases = [0.1, 1000000];
 
         let trace3 = [{
           x: cases,
@@ -704,7 +703,7 @@ window.app = new Vue({
     },
 
     logxrange() {
-      return [1, Math.ceil(Math.log10(1.5 * this.xmax))];
+      return [this.perMillion ? 0 : 0.5, Math.log10(1.5 * this.xmax)];
     },
 
     linearxrange() {
@@ -712,12 +711,7 @@ window.app = new Vue({
     },
 
     logyrange() {
-
-      if (this.ymin < 10) { // shift ymin on log scale if fewer than 10 cases
-        return [0, Math.ceil(Math.log10(1.5 * this.ymax))];
-      } else {
-        return [1, Math.ceil(Math.log10(1.5 * this.ymax))];
-      }
+      return [this.perMillion ? -1.5 : 0, Math.log10(1.2 * this.ymax)];
     },
 
     linearyrange() {
@@ -727,7 +721,7 @@ window.app = new Vue({
 
     xAnnotation() {
 
-      if (this.selectedScale == 'Logarithmic Scale') {
+      if (this.selectedScale == 'logaritmická škála') {
         let x = this.logyrange[1] - Math.log10(this.referenceLine(1));
         if (x < this.logxrange[1]) {
           return x;
@@ -746,7 +740,7 @@ window.app = new Vue({
     },
 
     yAnnotation() {
-      if (this.selectedScale == 'Logarithmic Scale') {
+      if (this.selectedScale == 'logaritmická škála') {
         let x = this.logyrange[1] - Math.log10(this.referenceLine(1));
         if (x < this.logxrange[1]) {
           return this.logyrange[1];
@@ -770,7 +764,7 @@ window.app = new Vue({
 
     paused: true,
 
-    dataTypes: ['potvrdených prípadov', 'Reported Deaths'],
+    dataTypes: ['potvrdených prípadov'],
 
     selectedData: 'potvrdených prípadov',
 
@@ -780,11 +774,9 @@ window.app = new Vue({
 
     lookbackTime: 7,
 
-    scale: ['Logarithmic Scale', 'Linear Scale'],
+    scale: ['logaritmická škála', 'lineárna škála'],
 
-    selectedScale: 'Logarithmic Scale',
-
-    minCasesInCountry: 0.0005,
+    selectedScale: 'logaritmická škála',
 
     dates: [],
 
