@@ -116,6 +116,13 @@
           <input @change="createURL" type="checkbox" style="margin-top: 0.75rem;" id="perMillion" v-model="perMillion">
           <label for="perMillion">Relatívne k počtu obyvateľov</label>
 
+          <div>
+            <input @change="createURL" type="checkbox" style="margin-top: 0.75rem;" id="enableStartAt" v-model="enableStartAt">
+            <label for="enableStartAt">Animácia od
+              <input @change="createURL" type="number" min="1" step="1" style="width: 3rem; padding: 0rem; font-size: inherit;" v-model.number="startAtDay" @focus="pause"  aria-label="Začať animáciu od tohto dňa">
+              . dňa pandémie</label>
+          </div>
+
         </div>
 
         <div class="countries">

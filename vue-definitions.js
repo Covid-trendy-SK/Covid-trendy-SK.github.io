@@ -210,6 +210,11 @@ window.app = new Vue({
         this.perMillion = (perMillion == 'true');
       } else this.perMillion = false;
 
+      if (urlParameters.has('startAtDay')) {
+        this.enableStartAt = true;
+        this.startAtDay = +urlParameters.get('startAtDay') || 0;
+      }
+
       if (urlParameters.has('select')) {
         this.mySelect = urlParameters.get('select').toLowerCase();
       }
@@ -251,6 +256,18 @@ window.app = new Vue({
       this.searchField = '';
     },
 
+    enableStartAt() {
+      if (this.enableStartAt) {
+        this.day = this.startAtDay;
+        if (this.paused && !this.autoplay) this.play();
+      }
+    },
+
+    startAtDay() {
+      this.day = this.startAtDay = Math.min(this.dates.length, Math.max(this.minDay, this.startAtDay));
+      if (this.enableStartAt && this.paused && !this.autoplay) this.play();
+    },
+
     minDay() {
       if (this.day < this.minDay) {
         this.day = this.minDay;
@@ -260,8 +277,9 @@ window.app = new Vue({
     'graphAttributes.mounted': function() {
 
       if (this.graphAttributes.mounted && this.autoplay && this.minDay > 0) {
-        this.day = this.minDay;
-        this.play();
+        this.startAtDay = Math.max(this.minDay, this.startAtDay);
+        this.day = Math.min(this.dates.length, this.startAtDay);
+        if (this.day < this.dates.length) this.play();
         this.autoplay = false; // disable autoplay on first play
       }
     },
@@ -392,7 +410,7 @@ window.app = new Vue({
       if (this.paused) {
 
         if (this.day == this.dates.length) {
-          this.day = this.minDay;
+          this.day = this.enableStartAt ? this.startAtDay : this.minDay;
         }
 
         this.paused = false;
@@ -468,6 +486,10 @@ window.app = new Vue({
 
       if (this.perMillion) {
         queryUrl.append('perMillion', this.perMillion);
+      }
+
+      if (this.enableStartAt) {
+        queryUrl.append('startAtDay', this.startAtDay);
       }
 
       // check if no countries selected
@@ -671,6 +693,8 @@ window.app = new Vue({
           showTrendLine: this.showTrendLine,
           perMillion: this.perMillion,
           doublingTime: this.doublingTime,
+          enableStartAt: this.enableStartAt,
+          startAtDay: this.startAtDay,
         },
         traces: this.traces,
         layout: this.layout,
@@ -805,6 +829,10 @@ window.app = new Vue({
     searchField: '',
 
     autoplay: true,
+
+    enableStartAt: false,
+
+    startAtDay: 0,
 
     firstLoad: true,
 
