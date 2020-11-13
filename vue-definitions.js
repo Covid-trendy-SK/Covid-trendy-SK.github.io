@@ -205,6 +205,11 @@ window.app = new Vue({
         this.doublingTime = doublingTime;
       }
       
+      if (urlParameters.has('newCasesLimit')) {
+        this.showNewCasesLimit = true;
+        this.newCasesLimit = +urlParameters.get('newCasesLimit') || 750;
+      }
+
       if (urlParameters.has('perMillion')) {
         let perMillion = urlParameters.get('perMillion');
         this.perMillion = (perMillion == 'true');
@@ -484,6 +489,10 @@ window.app = new Vue({
         queryUrl.append('doublingtime', this.doublingTime);
       }
 
+      if (this.showNewCasesLimit) {
+        queryUrl.append('newCasesLimit', this.newCasesLimit);
+      }
+
       if (this.perMillion) {
         queryUrl.append('perMillion', this.perMillion);
       }
@@ -567,6 +576,21 @@ window.app = new Vue({
           color: 'grey',
           size: 14
         },
+      },
+      {
+        visible: this.perMillion && this.showNewCasesLimit,
+        x: this.xNewCasesLimitAnnotation,
+        y: this.selectedScale == 'logaritmická škála' ? Math.log10(this.newCasesLimitPerWeekAndMillion) : this.newCasesLimitPerWeekAndMillion,
+        xref: 'x',
+        yref: 'y',
+        text: 'v SR ' + this.newCasesLimit + ' novo nakazených za deň<br>t.j. ' + this.newCasesLimitPerWeekAndMillion + ' za týždeň na 10k obyvateľov',
+        align: 'right',
+        showarrow: false,
+        font: {
+          family: 'Open Sans, sans-serif',
+          color: 'grey',
+          size: 14
+        }
       }];
 
     },
@@ -646,6 +670,24 @@ window.app = new Vue({
 
       }));
 
+      let traces = [...trace1, ...trace2];
+
+      if (this.perMillion && this.showNewCasesLimit) {
+        const trace4 = [{
+          x: [0, 10000],
+          y: Array(2).fill(this.newCasesLimitPerWeekAndMillion),
+          mode: 'lines',
+          line: {
+            dash: 'dot'
+          },
+          marker: {
+            color: 'rgba(114, 27, 101, 0.7)'
+          },
+          hoverinfo: 'skip'
+        }];
+        traces = [...traces, ...trace4];
+      } 
+
       if (this.showTrendLine && this.doublingTime > 0) {
         let cases = [0.1, 1000000];
 
@@ -663,12 +705,11 @@ window.app = new Vue({
         }];
 
         // reference line must be last trace for annotation angle to work out
-        return [...trace1, ...trace2, ...trace3];
+        traces = traces.concat(trace3);
 
-      } else {
-        return [...trace1, ...trace2];
       }
 
+      return traces;
     },
 
     config() {
@@ -693,6 +734,8 @@ window.app = new Vue({
           showTrendLine: this.showTrendLine,
           perMillion: this.perMillion,
           doublingTime: this.doublingTime,
+          showNewCasesLimit: this.showNewCasesLimit,
+          newCasesLimit: this.newCasesLimit,
           enableStartAt: this.enableStartAt,
           startAtDay: this.startAtDay,
         },
@@ -780,6 +823,19 @@ window.app = new Vue({
         }
       }
 
+    },
+
+    xNewCasesLimitAnnotation() {
+      if (this.selectedScale == 'logaritmická škála') {
+        return this.logxrange[1] * 0.9;
+      } else {
+        return this.linearxrange[1] * 0.9;
+      }
+    },
+
+    newCasesLimitPerWeekAndMillion() {
+      const totalPopulation = this.covidData.reduce((a, b) => a + b.population, 0);
+      return Math.round(1000000 * this.newCasesLimit * 7 / totalPopulation) / 100;
     }
 
   },
@@ -823,6 +879,10 @@ window.app = new Vue({
     perMillion: true,
 
     doublingTime: 2,
+
+    newCasesLimit: 750,
+
+    showNewCasesLimit: false,
     
     mySelect: '',
 
