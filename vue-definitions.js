@@ -762,23 +762,27 @@ window.app = new Vue({
     },
 
     filteredCases() {
-      return Array.prototype.concat(...this.filteredCovidData.map(e => e.cases)).filter(e => !isNaN(e));
+      let src = this.filteredCovidData.map(e => e.cases);
+      if (this.enableStartAt) src = src.map(e => e.slice(this.startAtDay));
+      return Array.prototype.concat(...src).filter(e => !isNaN(e));
     },
 
     filteredSlope() {
-      return Array.prototype.concat(...this.filteredCovidData.map(e => e.slope)).filter(e => !isNaN(e));
+      let src = this.filteredCovidData.map(e => e.slope);
+      if (this.enableStartAt) src = src.map(e => e.slice(this.startAtDay));
+      return Array.prototype.concat(...src).filter(e => !isNaN(e));
     },
 
     logxrange() {
-      return [this.perMillion ? 0 : 0.5, Math.log10(1.5 * this.xmax)];
+      return [this.enableStartAt ? Math.log10(0.8 * this.xmin) : this.perMillion ? 0 : 0.5, Math.log10(1.5 * this.xmax)];
     },
 
     linearxrange() {
-      return [-0.49 * Math.pow(10, Math.floor(Math.log10(this.xmax))), Math.round(1.2 * this.xmax)];
+      return [0, Math.round(1.2 * this.xmax)];
     },
 
     logyrange() {
-      return [this.perMillion ? -1.5 : 0, Math.log10(1.2 * this.ymax)];
+      return [this.enableStartAt ? Math.log10(0.8 * this.ymin) : this.perMillion ? -1.5 : 0, Math.log10(1.2 * this.ymax)];
     },
 
     linearyrange() {
