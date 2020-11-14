@@ -332,6 +332,21 @@ window.app = new Vue({
       return Math.min.apply(Math, par);
     },
 
+    addSyntheticRegion(level, newName, parts) {
+      const includedRegions = this.covidData.filter(okres => parts.includes(okres.country));
+      if (includedRegions.length != parts.length) return;
+
+      const newRegion = {
+        country: newName,
+        level: level,
+        cases: includedRegions.map(e => e.cases).reduce((acc, cur) => cur.map((e, i) => e + (acc[i] ? acc[i] : 0)), []),
+        population: includedRegions.map(e => e.population).reduce((acc, cur) => acc + cur, 0)
+      };
+      newRegion.maxCases = Math.max(...newRegion.cases);
+
+      this.covidData.push(newRegion);
+    },
+
     pullData(selectedData, updateSelectedCountries = true) {
 
       const Httpreq = new XMLHttpRequest(); // a new request
@@ -346,6 +361,7 @@ window.app = new Vue({
         const i = parseInt(istr, 10);
         poOkresoch[i] = {
           country: okresy[istr].title,
+          level: 4,
           cases: [],
           maxCases: 0,
           population: okresy[istr].population
@@ -359,7 +375,7 @@ window.app = new Vue({
         for (let okriter = 0; okriter < dd.list.length; okriter++) {
           const i = parseInt(dd.list[okriter].id, 10);
           if (!poOkresoch[i]) continue;
-          const cases = parseInt(dd.list[okriter].infected) / (this.perMillion ? poOkresoch[i].population / 10000 : 1);
+          const cases = parseInt(dd.list[okriter].infected);
           poOkresoch[i].cases.push(cases);
           if (poOkresoch[i].maxCases < cases) poOkresoch[i].maxCases = cases;
         }
@@ -374,12 +390,38 @@ window.app = new Vue({
       this.dates = dates;
       this.day = this.dates.length;
 
-      poOkresoch.forEach(okres => {
+      //id nie su dalej zajimave, vypusti medzery z pola
+      this.covidData = poOkresoch.filter(() => true);
+
+      this.addSyntheticRegion(3, "Orava (región)", ["Dolný Kubín", "Námestovo", "Tvrdošín"]);
+      this.addSyntheticRegion(3, "Kysuce (región)", ["Čadca", "Kysucké Nové Mesto"]);
+      this.addSyntheticRegion(3, "Horná Nitra (región)", ["Bánovce nad Bebravou", "Partizánske", "Prievidza", "Topoľčany"]);
+      this.addSyntheticRegion(3, "Záhorie (región)", ["Malacky", "Senica", "Skalica"]);
+      this.addSyntheticRegion(3, "Gemer-Malohont (región)", ["Rimavská Sobota", "Revúca", "Rožňava"]);
+      this.addSyntheticRegion(3, "Horehronie (región)", ["Banská Bystrica", "Brezno"]);
+      this.addSyntheticRegion(3, "Podpoľanie (región)", ["Detva", "Krupina", "Zvolen"]);
+      this.addSyntheticRegion(3, "Spiš (región)", ["Kežmarok", "Spišská Nová Ves", "Gelnica", "Košice - okolie", "Levoča", "Stará Ľubovňa", "Poprad"]);
+      this.addSyntheticRegion(3, "Turiec (región)", ["Martin", "Turčianske Teplice"]);
+      this.addSyntheticRegion(3, "Liptov (región)", ["Ružomberok", "Liptovský Mikuláš"]);
+      this.addSyntheticRegion(3, "Šariš (región)", ["Bardejov", "Prešov", "Sabinov", "Stropkov", "Svidník"]);
+      this.addSyntheticRegion(3, "Dolný Zemplín (región)", ["Michalovce", "Sobrance", "Trebišov"]);
+      this.addSyntheticRegion(3, "Horný Zemplín (región)", ["Humenné", "Medzilaborce", "Snina", "Vranov nad Topľou", "Stropkov"]);
+      this.addSyntheticRegion(2, "Bratislavský kraj", ["Bratislava", "Malacky", "Pezinok", "Senec"]);
+      this.addSyntheticRegion(2, "Trnavský kraj", ["Dunajská Streda", "Galanta", "Hlohovec", "Piešťany", "Senica", "Skalica", "Trnava"]);
+      this.addSyntheticRegion(2, "Trenčiansky kraj", ["Bánovce nad Bebravou", "Ilava", "Myjava", "Nové Mesto nad Váhom", "Partizánske", "Považská Bystrica", "Prievidza", "Púchov", "Trenčín"]);
+      this.addSyntheticRegion(2, "Nitriansky kraj", ["Komárno", "Levice", "Nitra", "Nové Zámky", "Šaľa", "Topoľčany", "Zlaté Moravce"]);
+      this.addSyntheticRegion(2, "Žilinský kraj", ["Bytča", "Čadca", "Dolný Kubín", "Kysucké Nové Mesto", "Liptovský Mikuláš", "Martin", "Námestovo", "Ružomberok", "Turčianske Teplice", "Tvrdošín", "Žilina"]);
+      this.addSyntheticRegion(2, "Banskobystrický kraj", ["Banská Bystrica", "Banská Štiavnica", "Brezno", "Detva", "Krupina", "Lučenec", "Poltár", "Revúca", "Rimavská Sobota", "Veľký Krtíš", "Zvolen", "Žarnovica", "Žiar nad Hronom"]);
+      this.addSyntheticRegion(2, "Prešovský kraj", ["Bardejov", "Humenné", "Kežmarok", "Levoča", "Medzilaborce", "Poprad", "Prešov", "Sabinov", "Snina", "Stará Ľubovňa", "Stropkov", "Svidník", "Vranov nad Topľou"]);
+      this.addSyntheticRegion(2, "Košický kraj", ["Gelnica", "Košice", "Košice - okolie", "Michalovce", "Rožňava", "Sobrance", "Spišská Nová Ves", "Trebišov"]);
+      this.addSyntheticRegion(1, "Slovenská Republika", ["Banskobystrický kraj", "Bratislavský kraj", "Košický kraj", "Nitriansky kraj", "Prešovský kraj", "Trenčiansky kraj", "Trnavský kraj", "Žilinský kraj"]);
+
+      this.covidData.forEach(okres => {
+        if (this.perMillion) okres.cases = okres.cases.map(c => c * 10000 / okres.population);
         okres.slope = okres.cases.map((e, i, a) => e - a[i - this.lookbackTime]);
       });
 
-      this.covidData = poOkresoch;
-      this.countries = this.covidData.map(e => e.country).sort();
+      this.countries = this.covidData.map(e => [e.level, e.country]).sort().map(e => e[1]);
       this.visibleCountries = this.countries;
       const topCountries = this.covidData.sort((a, b) => b.maxCases - a.maxCases).slice(0, 9).map(e => e.country);
 
@@ -838,7 +880,7 @@ window.app = new Vue({
     },
 
     newCasesLimitPerWeekAndMillion() {
-      const totalPopulation = this.covidData.reduce((a, b) => a + b.population, 0);
+      const totalPopulation = this.covidData.reduce((a, b) => a + (b.level == 4 ? b.population : 0), 0);
       return Math.round(1000000 * this.newCasesLimit * 7 / totalPopulation) / 100;
     }
 
