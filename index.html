@@ -90,7 +90,6 @@
       <aside>
 
         <div>
-          <h2>Nastavenia</h2>
           <label for="selectedData">Zobrazený parameter</label>
           <select id="selectedData" v-model="selectedData" @mousedown="pause">
             <option v-for="d in dataTypes" v-bind:value="d">
@@ -117,6 +116,13 @@
           <label for="perMillion">Relatívne k počtu obyvateľov</label>
 
           <div>
+            <input @change="createURL" type="checkbox" style="margin-top: 0.75rem;" :disabled="!perMillion" id="showTrendLine" v-model="showNewCasesLimit">
+            <label for="showTrendLine">Zobraz limit
+              <input @change="createURL" type="number" min="1" step="1" style="width: 3rem; padding: 0rem; font-size: inherit;" v-model.number="newCasesLimit" @focus="pause"  aria-label="Limit nových nakazených za deň">
+                novo nakazených v SR za deň</label>
+          </div>
+
+          <div>
             <input @change="createURL" type="checkbox" style="margin-top: 0.75rem;" id="enableStartAt" v-model="enableStartAt">
             <label for="enableStartAt">Animácia od
               <input @change="createURL" type="number" min="1" step="1" style="width: 3rem; padding: 0rem; font-size: inherit;" v-model.number="startAtDay" @focus="pause"  aria-label="Začať animáciu od tohto dňa">
@@ -127,10 +133,10 @@
 
         <div class="countries">
 
-          <h2>Okresy</h2>
+          <h2>Okresy a regióny</h2>
 
           <div class="search">
-            <input id="searchField" v-model="searchField" placeholder="Vyhľadať okres" aria-label="Vyhľadať okres">
+            <input id="searchField" v-model="searchField" placeholder="Vyhľadať oblasť" aria-label="Vyhľadať oblasť">
           </div>
 
           <div class="buttonwrapper">

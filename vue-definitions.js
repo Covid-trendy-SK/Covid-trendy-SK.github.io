@@ -205,6 +205,11 @@ window.app = new Vue({
         this.doublingTime = doublingTime;
       }
       
+      if (urlParameters.has('newCasesLimit')) {
+        this.showNewCasesLimit = true;
+        this.newCasesLimit = +urlParameters.get('newCasesLimit') || 750;
+      }
+
       if (urlParameters.has('perMillion')) {
         let perMillion = urlParameters.get('perMillion');
         this.perMillion = (perMillion == 'true');
@@ -327,6 +332,21 @@ window.app = new Vue({
       return Math.min.apply(Math, par);
     },
 
+    addSyntheticRegion(level, newName, parts) {
+      const includedRegions = this.covidData.filter(okres => parts.includes(okres.country));
+      if (includedRegions.length != parts.length) return;
+
+      const newRegion = {
+        country: newName,
+        level: level,
+        cases: includedRegions.map(e => e.cases).reduce((acc, cur) => cur.map((e, i) => e + (acc[i] ? acc[i] : 0)), []),
+        population: includedRegions.map(e => e.population).reduce((acc, cur) => acc + cur, 0)
+      };
+      newRegion.maxCases = Math.max(...newRegion.cases);
+
+      this.covidData.push(newRegion);
+    },
+
     pullData(selectedData, updateSelectedCountries = true) {
 
       const Httpreq = new XMLHttpRequest(); // a new request
@@ -341,6 +361,7 @@ window.app = new Vue({
         const i = parseInt(istr, 10);
         poOkresoch[i] = {
           country: okresy[istr].title,
+          level: 4,
           cases: [],
           maxCases: 0,
           population: okresy[istr].population
@@ -354,7 +375,7 @@ window.app = new Vue({
         for (let okriter = 0; okriter < dd.list.length; okriter++) {
           const i = parseInt(dd.list[okriter].id, 10);
           if (!poOkresoch[i]) continue;
-          const cases = parseInt(dd.list[okriter].infected) / (this.perMillion ? poOkresoch[i].population / 10000 : 1);
+          const cases = parseInt(dd.list[okriter].infected);
           poOkresoch[i].cases.push(cases);
           if (poOkresoch[i].maxCases < cases) poOkresoch[i].maxCases = cases;
         }
@@ -369,12 +390,38 @@ window.app = new Vue({
       this.dates = dates;
       this.day = this.dates.length;
 
-      poOkresoch.forEach(okres => {
+      //id nie su dalej zajimave, vypusti medzery z pola
+      this.covidData = poOkresoch.filter(() => true);
+
+      this.addSyntheticRegion(3, "Orava (región)", ["Dolný Kubín", "Námestovo", "Tvrdošín"]);
+      this.addSyntheticRegion(3, "Kysuce (región)", ["Čadca", "Kysucké Nové Mesto"]);
+      this.addSyntheticRegion(3, "Horná Nitra (región)", ["Bánovce nad Bebravou", "Partizánske", "Prievidza", "Topoľčany"]);
+      this.addSyntheticRegion(3, "Záhorie (región)", ["Malacky", "Senica", "Skalica"]);
+      this.addSyntheticRegion(3, "Gemer-Malohont (región)", ["Rimavská Sobota", "Revúca", "Rožňava"]);
+      this.addSyntheticRegion(3, "Horehronie (región)", ["Banská Bystrica", "Brezno"]);
+      this.addSyntheticRegion(3, "Podpoľanie (región)", ["Detva", "Krupina", "Zvolen"]);
+      this.addSyntheticRegion(3, "Spiš (región)", ["Kežmarok", "Spišská Nová Ves", "Gelnica", "Košice - okolie", "Levoča", "Stará Ľubovňa", "Poprad"]);
+      this.addSyntheticRegion(3, "Turiec (región)", ["Martin", "Turčianske Teplice"]);
+      this.addSyntheticRegion(3, "Liptov (región)", ["Ružomberok", "Liptovský Mikuláš"]);
+      this.addSyntheticRegion(3, "Šariš (región)", ["Bardejov", "Prešov", "Sabinov", "Stropkov", "Svidník"]);
+      this.addSyntheticRegion(3, "Dolný Zemplín (región)", ["Michalovce", "Sobrance", "Trebišov"]);
+      this.addSyntheticRegion(3, "Horný Zemplín (región)", ["Humenné", "Medzilaborce", "Snina", "Vranov nad Topľou", "Stropkov"]);
+      this.addSyntheticRegion(2, "Bratislavský kraj", ["Bratislava", "Malacky", "Pezinok", "Senec"]);
+      this.addSyntheticRegion(2, "Trnavský kraj", ["Dunajská Streda", "Galanta", "Hlohovec", "Piešťany", "Senica", "Skalica", "Trnava"]);
+      this.addSyntheticRegion(2, "Trenčiansky kraj", ["Bánovce nad Bebravou", "Ilava", "Myjava", "Nové Mesto nad Váhom", "Partizánske", "Považská Bystrica", "Prievidza", "Púchov", "Trenčín"]);
+      this.addSyntheticRegion(2, "Nitriansky kraj", ["Komárno", "Levice", "Nitra", "Nové Zámky", "Šaľa", "Topoľčany", "Zlaté Moravce"]);
+      this.addSyntheticRegion(2, "Žilinský kraj", ["Bytča", "Čadca", "Dolný Kubín", "Kysucké Nové Mesto", "Liptovský Mikuláš", "Martin", "Námestovo", "Ružomberok", "Turčianske Teplice", "Tvrdošín", "Žilina"]);
+      this.addSyntheticRegion(2, "Banskobystrický kraj", ["Banská Bystrica", "Banská Štiavnica", "Brezno", "Detva", "Krupina", "Lučenec", "Poltár", "Revúca", "Rimavská Sobota", "Veľký Krtíš", "Zvolen", "Žarnovica", "Žiar nad Hronom"]);
+      this.addSyntheticRegion(2, "Prešovský kraj", ["Bardejov", "Humenné", "Kežmarok", "Levoča", "Medzilaborce", "Poprad", "Prešov", "Sabinov", "Snina", "Stará Ľubovňa", "Stropkov", "Svidník", "Vranov nad Topľou"]);
+      this.addSyntheticRegion(2, "Košický kraj", ["Gelnica", "Košice", "Košice - okolie", "Michalovce", "Rožňava", "Sobrance", "Spišská Nová Ves", "Trebišov"]);
+      this.addSyntheticRegion(1, "Slovenská Republika", ["Banskobystrický kraj", "Bratislavský kraj", "Košický kraj", "Nitriansky kraj", "Prešovský kraj", "Trenčiansky kraj", "Trnavský kraj", "Žilinský kraj"]);
+
+      this.covidData.forEach(okres => {
+        if (this.perMillion) okres.cases = okres.cases.map(c => c * 10000 / okres.population);
         okres.slope = okres.cases.map((e, i, a) => e - a[i - this.lookbackTime]);
       });
 
-      this.covidData = poOkresoch;
-      this.countries = this.covidData.map(e => e.country).sort();
+      this.countries = this.covidData.map(e => [e.level, e.country]).sort().map(e => e[1]);
       this.visibleCountries = this.countries;
       const topCountries = this.covidData.sort((a, b) => b.maxCases - a.maxCases).slice(0, 9).map(e => e.country);
 
@@ -484,6 +531,10 @@ window.app = new Vue({
         queryUrl.append('doublingtime', this.doublingTime);
       }
 
+      if (this.showNewCasesLimit) {
+        queryUrl.append('newCasesLimit', this.newCasesLimit);
+      }
+
       if (this.perMillion) {
         queryUrl.append('perMillion', this.perMillion);
       }
@@ -567,6 +618,21 @@ window.app = new Vue({
           color: 'grey',
           size: 14
         },
+      },
+      {
+        visible: this.perMillion && this.showNewCasesLimit,
+        x: this.xNewCasesLimitAnnotation,
+        y: this.selectedScale == 'logaritmická škála' ? Math.log10(this.newCasesLimitPerWeekAndMillion) : this.newCasesLimitPerWeekAndMillion,
+        xref: 'x',
+        yref: 'y',
+        text: 'v SR ' + this.newCasesLimit + ' novo nakazených za deň<br>t.j. ' + this.newCasesLimitPerWeekAndMillion + ' za týždeň na 10k obyvateľov',
+        align: 'right',
+        showarrow: false,
+        font: {
+          family: 'Open Sans, sans-serif',
+          color: 'grey',
+          size: 14
+        }
       }];
 
     },
@@ -646,6 +712,24 @@ window.app = new Vue({
 
       }));
 
+      let traces = [...trace1, ...trace2];
+
+      if (this.perMillion && this.showNewCasesLimit) {
+        const trace4 = [{
+          x: [0, 10000],
+          y: Array(2).fill(this.newCasesLimitPerWeekAndMillion),
+          mode: 'lines',
+          line: {
+            dash: 'dot'
+          },
+          marker: {
+            color: 'rgba(114, 27, 101, 0.7)'
+          },
+          hoverinfo: 'skip'
+        }];
+        traces = [...traces, ...trace4];
+      } 
+
       if (this.showTrendLine && this.doublingTime > 0) {
         let cases = [0.1, 1000000];
 
@@ -663,12 +747,11 @@ window.app = new Vue({
         }];
 
         // reference line must be last trace for annotation angle to work out
-        return [...trace1, ...trace2, ...trace3];
+        traces = traces.concat(trace3);
 
-      } else {
-        return [...trace1, ...trace2];
       }
 
+      return traces;
     },
 
     config() {
@@ -693,6 +776,8 @@ window.app = new Vue({
           showTrendLine: this.showTrendLine,
           perMillion: this.perMillion,
           doublingTime: this.doublingTime,
+          showNewCasesLimit: this.showNewCasesLimit,
+          newCasesLimit: this.newCasesLimit,
           enableStartAt: this.enableStartAt,
           startAtDay: this.startAtDay,
         },
@@ -719,23 +804,27 @@ window.app = new Vue({
     },
 
     filteredCases() {
-      return Array.prototype.concat(...this.filteredCovidData.map(e => e.cases)).filter(e => !isNaN(e));
+      let src = this.filteredCovidData.map(e => e.cases);
+      if (this.enableStartAt) src = src.map(e => e.slice(this.startAtDay));
+      return Array.prototype.concat(...src).filter(e => !isNaN(e));
     },
 
     filteredSlope() {
-      return Array.prototype.concat(...this.filteredCovidData.map(e => e.slope)).filter(e => !isNaN(e));
+      let src = this.filteredCovidData.map(e => e.slope);
+      if (this.enableStartAt) src = src.map(e => e.slice(this.startAtDay));
+      return Array.prototype.concat(...src).filter(e => !isNaN(e));
     },
 
     logxrange() {
-      return [this.perMillion ? 0 : 0.5, Math.log10(1.5 * this.xmax)];
+      return [this.enableStartAt ? Math.log10(0.8 * this.xmin) : this.perMillion ? 0 : 0.5, Math.log10(1.5 * this.xmax)];
     },
 
     linearxrange() {
-      return [-0.49 * Math.pow(10, Math.floor(Math.log10(this.xmax))), Math.round(1.2 * this.xmax)];
+      return [0, Math.round(1.2 * this.xmax)];
     },
 
     logyrange() {
-      return [this.perMillion ? -1.5 : 0, Math.log10(1.2 * this.ymax)];
+      return [this.enableStartAt ? Math.log10(0.8 * this.ymin) : this.perMillion ? -1.5 : 0, Math.log10(1.2 * this.ymax)];
     },
 
     linearyrange() {
@@ -780,6 +869,19 @@ window.app = new Vue({
         }
       }
 
+    },
+
+    xNewCasesLimitAnnotation() {
+      if (this.selectedScale == 'logaritmická škála') {
+        return this.logxrange[1] * 0.9;
+      } else {
+        return this.linearxrange[1] * 0.9;
+      }
+    },
+
+    newCasesLimitPerWeekAndMillion() {
+      const totalPopulation = this.covidData.reduce((a, b) => a + (b.level == 4 ? b.population : 0), 0);
+      return Math.round(1000000 * this.newCasesLimit * 7 / totalPopulation) / 100;
     }
 
   },
@@ -823,6 +925,10 @@ window.app = new Vue({
     perMillion: true,
 
     doublingTime: 2,
+
+    newCasesLimit: 750,
+
+    showNewCasesLimit: false,
     
     mySelect: '',
 

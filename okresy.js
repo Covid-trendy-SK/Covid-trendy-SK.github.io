@@ -344,7 +344,7 @@ const okresy = {
   },
   "67":
   {
-    "title": "Topolčany",
+    "title": "Topoľčany",
     "population": 69947
   },
   "68":
